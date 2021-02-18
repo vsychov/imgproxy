@@ -159,7 +159,8 @@ type processingOptions struct {
 
 	Filename string
 
-	UsedPresets []string
+	UsedPresets     []string
+	ReturnImageInfo bool
 }
 
 const (
@@ -283,6 +284,10 @@ func (po *processingOptions) String() string {
 
 func (po *processingOptions) MarshalJSON() ([]byte, error) {
 	return po.Diff().MarshalJSON()
+}
+
+func (po *processingOptions) isImageInfoRequested() bool {
+	return po.ReturnImageInfo
 }
 
 func colorFromHex(hexcolor string) (rgbColor, error) {
@@ -1176,6 +1181,12 @@ func parsePath(ctx context.Context, r *http.Request) (context.Context, error) {
 		return ctx, newError(404, fmt.Sprintf("Invalid path: %s", path), msgInvalidURL)
 	}
 
+	var returnImageInfo bool
+	if parts[0] == "info" {
+		returnImageInfo = true
+		parts = parts[1:]
+	}
+
 	if !conf.AllowInsecure {
 		if err = validatePath(parts[0], strings.TrimPrefix(path, parts[0])); err != nil {
 			return ctx, newError(403, err.Error(), msgForbidden)
@@ -1198,6 +1209,10 @@ func parsePath(ctx context.Context, r *http.Request) (context.Context, error) {
 		imageURL, po, err = parsePathBasic(parts[1:], headers)
 	} else {
 		imageURL, po, err = parsePathAdvanced(parts[1:], headers)
+	}
+
+	if po != nil && returnImageInfo {
+		po.ReturnImageInfo = true
 	}
 
 	if err != nil {

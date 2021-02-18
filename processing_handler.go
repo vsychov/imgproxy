@@ -122,6 +122,25 @@ func respondWithImage(ctx context.Context, reqID string, r *http.Request, rw htt
 	// logResponse(reqID, r, 200, getTimerSince(ctx), getImageURL(ctx), po))
 }
 
+func respondWithImageInfo(ctx context.Context, reqID string, r *http.Request, rw http.ResponseWriter, imageSize int) {
+	rw.WriteHeader(200)
+	po := getProcessingOptions(ctx)
+
+	rw.Header().Set("Content-Type", "application/json")
+	response := fmt.Sprintf(
+		"{\"format\": \"%s\",\"width\": %d, \"height\": %d, \"size\": %d}",
+		po.Format,
+		po.Width,
+		po.Height,
+		imageSize,
+	)
+	rw.Write([]byte(response))
+
+	imageURL := getImageURL(ctx)
+
+	logResponse(reqID, r, 200, nil, &imageURL, po)
+}
+
 func respondWithNotModified(ctx context.Context, reqID string, r *http.Request, rw http.ResponseWriter) {
 	rw.WriteHeader(304)
 
@@ -194,10 +213,10 @@ func handleProcessing(reqID string, rw http.ResponseWriter, r *http.Request) {
 	}
 
 	checkTimeout(ctx)
+	po := getProcessingOptions(ctx)
 
 	if len(conf.SkipProcessingFormats) > 0 {
 		imgdata := getImageData(ctx)
-		po := getProcessingOptions(ctx)
 
 		if imgdata.Type == po.Format || po.Format == imageTypeUnknown {
 			for _, f := range conf.SkipProcessingFormats {
@@ -223,6 +242,11 @@ func handleProcessing(reqID string, rw http.ResponseWriter, r *http.Request) {
 	}
 
 	checkTimeout(ctx)
+
+	if po.isImageInfoRequested() {
+		respondWithImageInfo(ctx, reqID, r, rw, len(imageData))
+		return
+	}
 
 	respondWithImage(ctx, reqID, r, rw, imageData)
 }

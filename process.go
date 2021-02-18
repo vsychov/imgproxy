@@ -840,5 +840,7 @@ func processImage(ctx context.Context) ([]byte, context.CancelFunc, error) {
 		return saveImageToFitBytes(po, img)
 	}
 
+	po.Width, po.Height = img.Height(), img.Width()
+
 	return img.Save(po.Format, po.getQuality())
 }
